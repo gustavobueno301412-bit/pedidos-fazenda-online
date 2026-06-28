@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👩🏻‍🌾 Fazenda Online 🚜</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        :root { --verde: #2d5a27; --creme: #fdfaf6; --madeira: #8b4513; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--creme); margin: 0; padding: 10px; color: #333; }
+        .header { background: var(--verde); color: #fff; padding: 15px; text-align: center; border-radius: 10px; }
+       
+        #banner { width: 100%; height: 250px; background-size: cover; background-position: center; background-repeat: no-repeat; margin: 15px 0; border-radius: 10px; border: 3px solid var(--madeira); transition: background 1s ease-in-out; }
+       
+        .container-produtos { display: flex; flex-wrap: wrap; justify-content: center; }
+       
+        .card {
+            background: #fff;
+            width: 45%;
+            min-width: 140px;
+            margin: 2%;
+            padding: 10px;
+            border-left: 5px solid var(--verde);
+            border-radius: 10px;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+       
+        .card img {
+            width: 100%;
+            height: 150px;
+            object-fit: contain;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+       
+        .carrinho { background: #efebe9; padding: 20px; border-radius: 10px; border: 1px solid var(--madeira); margin-top: 20px; }
+        .btn { background: var(--verde); color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 5px; font-weight: bold; }
+        .lixeira { cursor: pointer; color: red; font-size: 1.2em; margin-left: 10px; }
+       
+        input, select { padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; border-radius: 5px; border: 1px solid #ccc; }
+       
+        .controls { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; }
+       
+        @media (min-width: 768px) { .card { width: 30%; } }
+    </style>
+</head>
+<body>
+
+<div class="header"><h1>🚜 Fazenda Online 👩🏻‍🌾</h1></div>
+<div id="banner"></div>
+<input type="text" id="busca" placeholder="🔍 Buscar produtos da roça..." onkeyup="filtrar()">
+<div class="container-produtos" id="lista-produtos"></div>
+
+<div class="carrinho">
+    <h2>🛒 Meu Carrinho</h2>
+    <div id="itens-carrinho"></div>
+    <h3>🖨️ Total: R$ <span id="total-carrinho">0.00</span></h3>
+    <input type="text" id="nomeCliente" placeholder="👤 Seu Nome">
+   
+    <select id="tipoEntrega" onchange="toggleEntrega()">
+        <option value="entrega">📦 Entrega (Agendaremos data/hora)</option>
+        <option value="retirada">🏠 Retirada no Local</option>
+    </select>
+   
+    <input type="text" id="endereco" placeholder="📍 Endereço de Entrega">
+   
+    <select id="formaPgto" onchange="toggleTroco()">
+        <option value="Pix">🔑 Pix</option>
+        <option value="Cartão">💳 Cartão</option>
+        <option value="Dinheiro">💰 Dinheiro</option>
+    </select>
+    <input type="text" id="troco" placeholder="💵 Troco para quanto?" style="display:none;">
+   
+    <button class="btn" style="width: 100%; margin-top: 10px;" onclick="finalizarPedido()">✅ Enviar Pedido no WhatsApp</button>
+</div>
+
+<script>
+    let carrinho = {};
+    let produtos = [];
+    let imagensBanner = [];
+    let indiceBanner = 0;
+
+    // Lógica para esconder/mostrar campos dinamicamente
+    function toggleEntrega() {
+        const tipo = document.getElementById('tipoEntrega').value;
+        document.getElementById('endereco').style.display = tipo === 'entrega' ? 'block' : 'none';
+    }
+    toggleEntrega(); // Chama ao carregar
+
+    Papa.parse("https://docs.google.com/spreadsheets/d/e/2PACX-1vT6JVqkmvYrInnQHtmmyEuDBuDlorFRj4b3dCrqVevF3-oDDmmJCNSq7yJTX_X3kRcGhM77BLGCrzUg/pub?gid=0&single=true&output=csv", {
+        download: true, header: true, complete: (res) => { produtos = res.data; renderizarProdutos(produtos); }
+    });
+
+    Papa.parse("https://docs.google.com/spreadsheets/d/e/2PACX-1vT6JVqkmvYrInnQHtmmyEuDBuDlorFRj4b3dCrqVevF3-oDDmmJCNSq7yJTX_X3kRcGhM77BLGCrzUg/pub?gid=1885315939&single=true&output=csv", {
+        download: true, header: true, complete: (res) => {
+            imagensBanner = res.data.map(i => i['Imagem (URL)']);
+            setInterval(() => {
+                document.getElementById('banner').style.backgroundImage = `url('${imagensBanner[indiceBanner]}')`;
+                indiceBanner = (indiceBanner + 1) % imagensBanner.length;
+            }, 3000);
+        }
+    });
+
+    function renderizarProdutos(lista) {
+        const div = document.getElementById('lista-produtos');
+        div.innerHTML = lista.map(p => `
+            <div class="card">
+                <img src="${p['Imagem (URL)']}" alt="${p['Nome do Produto']}">
+                <h3>${p['Nome do Produto']}</h3>
+                <p>📝 ${p['Descrição']}</p>
+                <p>💰 <b>R$ ${p['Preço']}</b></p>
+                <div class="controls">
+                    <button class="btn" onclick="alterarQtd('${p['Nome do Produto']}', ${p['Preço']}, -1)">➖</button>
+                    <span id="qtd-${p['Nome do Produto']}">0</span>
+                    <button class="btn" onclick="alterarQtd('${p['Nome do Produto']}', ${p['Preço']}, 1)">➕</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function alterarQtd(nome, preco, delta) {
+        if (!carrinho[nome]) carrinho[nome] = { qtd: 0, preco: parseFloat(preco) };
+        carrinho[nome].qtd = Math.max(0, carrinho[nome].qtd + delta);
+        if (document.getElementById(`qtd-${nome}`)) document.getElementById(`qtd-${nome}`).innerText = carrinho[nome].qtd;
+        if (carrinho[nome].qtd === 0) delete carrinho[nome];
+        atualizarCarrinho();
+    }
+
+    function atualizarCarrinho() {
+        const div = document.getElementById('itens-carrinho');
+        let total = 0;
+        div.innerHTML = Object.keys(carrinho).map(nome => {
+            let item = carrinho[nome];
+            total += item.qtd * item.preco;
+            return `<p>• ${nome} (x${item.qtd}) - R$ ${(item.qtd * item.preco).toFixed(2)}
+                    <span class="lixeira" onclick="removerItem('${nome}')">🗑️</span></p>`;
+        }).join('');
+        document.getElementById('total-carrinho').innerText = total.toFixed(2);
+    }
+
+    function removerItem(nome) {
+        delete carrinho[nome];
+        if(document.getElementById(`qtd-${nome}`)) document.getElementById(`qtd-${nome}`).innerText = "0";
+        atualizarCarrinho();
+    }
+
+    function toggleTroco() {
+        document.getElementById('troco').style.display = document.getElementById('formaPgto').value === 'Dinheiro' ? 'block' : 'none';
+    }
+
+    function finalizarPedido() {
+        let msg = `🚜 *PEDIDO FAZENDA ONLINE*\n\n👤 *Cliente:* ${document.getElementById('nomeCliente').value}\n\n`;
+        msg += `🛒 *Itens:*\n` + Object.keys(carrinho).map(n => `• ${n} x${carrinho[n].qtd}`).join('\n');
+        msg += `\n\n💵 *Total: R$ ${document.getElementById('total-carrinho').innerText}*`;
+       
+        const tipo = document.getElementById('tipoEntrega').value;
+        msg += `\n\n🚚 *Tipo:* ${tipo === 'entrega' ? '📦 Entrega' : '🏠 Retirada no Local'}`;
+        if(tipo === 'entrega') msg += `\n📍 *Endereço:* ${document.getElementById('endereco').value}`;
+       
+        msg += `\n💳 *Pagamento:* ${document.getElementById('formaPgto').value}`;
+        if(document.getElementById('formaPgto').value === 'Dinheiro') msg += `\n💰 *Troco para:* R$ ${document.getElementById('troco').value}`;
+       
+        window.open(`https://wa.me/5512997702412?text=${encodeURIComponent(msg)}`);
+    }
+
+    function filtrar() {
+        const busca = document.getElementById('busca').value.toLowerCase();
+        renderizarProdutos(produtos.filter(p => p['Nome do Produto'].toLowerCase().includes(busca)));
+    }
+</script>
+</body>
+</html>
+
+ 
